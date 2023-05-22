@@ -1,0 +1,22 @@
+{
+  "nurses": [
+    {
+      "nurse_id": 1,
+      "weekend_preference": "M",
+      "accumulated_hours": 5,
+      "unavailability_days": [],
+      "days_off_requested": ["2023-05-20", "2023-05-22"],
+      "available_morning_shifts": ["2023-05-21", "2023-05-23"],
+      "available_afternoon_shifts": ["2023-05-22", "2023-05-24"]
+    },
+    {
+      "nurse_id": 2,
+      "weekend_preference": "A",
+      "accumulated_hours": 0,
+      "unavailability_days": [],
+      "days_off_requested": ["2023-05-25", "2023-05-26"],
+      "available_morning_shifts": ["2023-05-20", "2023-05-24"],
+      "available_afternoon_shifts": ["2023-05-21", "2023-05-23"]
+    }
+  ]
+}
