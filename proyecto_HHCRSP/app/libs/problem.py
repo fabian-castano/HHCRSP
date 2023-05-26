@@ -9,11 +9,11 @@ from itertools import product
 
 
 class MultiObjectiveSolver:
-    def __int__(self, nurses: Dict[int, Nurse], shifts: Dict[str, Shift]):
+    def __init__(self, nurses: Dict[int, Nurse], shifts: Dict[str, Shift]):
         self.nurses = {}
         self.shifts = {}
         self.model = plp.LpProblem("Nurse Scheduling", plp.LpMinimize)
-
+        
         # set of nurses
         self.I = set(nurses.keys())
         # set of shifts
@@ -92,8 +92,7 @@ class MultiObjectiveSolver:
 
         # demand is satisfied
         for j in self.J:
-            self.model += plp.lpSum([self.X[(i, j)] for i in self.I if (i, j) in self.valid_keys ]) >= self.shifts[j1].demand, f"demand_{self.shifts[j1].shift_date}"
-
+            self.model += plp.lpSum([self.X[(i, j)] for i in self.I if (i, j) in self.valid_keys ]) >= self.shifts[j].demand, f"demand_{self.shifts[j].shift_date}"self.model += plp.lpSum([self.X[(i, j)] for i in self.I if (i, j) in self.valid_keys ]) >= self.shifts[j].demand, f"demand_{self.shifts[j].shift_date}"
         # for each weekend, a nurse works at most one day
         for i in self.I:
             for j1 in self.J:
@@ -131,12 +130,12 @@ class MultiObjectiveSolver:
                                              timedelta(days=1) and self.shifts[
                                                  j2].type_of_shift == 'M']) <= 1, f"morning_afternoon_{self.nurses[i].nurse_id}_{self.shifts[j1].shift_date}"
 
-        def _epsilon_constraints_solver(self):
-            self.model.objective = self._create_objective_minimize_overtime()
-            self.model.solve()
-            # get objective value
-            best_bound = plp.value(self.model.objective)
+    def _epsilon_constraints_solver(self):
+        self.model.objective = self._create_objective_minimize_overtime()
+        self.model.solve()
+        # get objective value
+        best_bound = plp.value(self.model.objective)
 
-            self.model.objective = self._create_objective_minimize_penalty()
-            self.model+= self._create_objective_minimize_overtime() <= best_bound
+        self.model.objective = self._create_objective_minimize_penalty()
+        self.model+= self._create_objective_minimize_overtime() <= best_bound
 
