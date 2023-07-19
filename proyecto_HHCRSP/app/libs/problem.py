@@ -22,7 +22,7 @@ class MultiObjectiveSolver:
 
         self.valid_keys = self._get_valid_keys()
 
-        self.X = None  # the nurse i ∈I is assigned at a morning shift z ∈ Z on a day k ∈ K
+        self.X = None  # the nurse i ∈I is assigned at a shift z ∈ Z on a day k ∈ K
         self.V = None
 
         # auxiliary variables
@@ -47,12 +47,13 @@ class MultiObjectiveSolver:
     def _get_valid_keys(self):
         valid_keys = [(i, j) for i in self.I for j in self.J]
         for i, j in valid_keys:
-            if self.shifts[j].shift_date not in self.nurses[i].unavailability_days:
+            if self.shifts[j].shift_date in self.nurses[i].unavailability_days:
                 valid_keys.remove((i, j))
 
         return valid_keys
 
     def _create_objective_minimize_penalty(self):
+        # accounts for the number of days a person is assigned to a day off he/she requested
         expr_PDL = plp.lpSum([(self.X[i, j] for i in self.I for j in self.J if
                                self.shifts[j].shift_date in self.nurses[i].days_off_requested)])
         # accounts for the number of weekends a person is assigned to a shif not in his/her preference
@@ -63,25 +64,29 @@ class MultiObjectiveSolver:
         return expr_PDL + expr_PWE
 
     def _create_objective_minimize_overtime(self):
+        # accounts for the number of overtime hours
         return self.MDH + plp.lpSum([self.V[i] for i in self.I]) * (1 / DM)
 
     def _create_constraints(self):
         for nurse in self.I:
+            # accounts the number of shifts assigned to a nurse
             self.model += self.Y[nurse] == plp.lpSum([self.X[i, j] for (i, j) in self.valid_keys if
                                                       nurse == i]), f"count_shifts_{self.nurses[nurse].nurse_id}"
 
         for nurse in self.I:
+            # accounts for the difference between shifts that should be assigned to a caregiver 
+            # (considering overtime hours to be balanced) and real number of shifts assigned
             self.model += self.Y[nurse] - (HMM - self.nurses[nurse].accumulated_hours) * (
                         1 / DM) <= self.MDH, f"balance_hours_1_{self.nurses[nurse].nurse_id}"
 
             self.model += (HMM - self.nurses[nurse].accumulated_hours) * (1 / DM) - self.Y[
                 nurse] <= self.MDH, f"balance_hours_2_{self.nurses[nurse].nurse_id}"
 
-        # for each nurse and each day, the number of shifts assigned to the nurse is less than or equal to 1
+        # for each nurse and each day, the number of shifts assigned in the same day to the nurse is less than or equal to 1
         for i in self.I:
             for j1 in self.J:
                 for j2 in self.J:
-                    if j1 != j2 and self.shifts[j1].shift_date == self.shifts[j2].shift_date:
+                    if j1 != j2 and self.shifts[j1].shift_date == self.shifts[j2].shift_date and (i, j1) in self.valid_keys and (i, j2) in self.valid_keys:
                         self.model += self.X[i, j1] + self.X[
                             i, j2] <= 1, f"one_shift_per_day_{self.nurses[i].nurse_id}_{self.shifts[j1].shift_date}"
 
@@ -93,6 +98,7 @@ class MultiObjectiveSolver:
         # demand is satisfied
         for j in self.J:
             self.model += plp.lpSum([self.X[(i, j)] for i in self.I if (i, j) in self.valid_keys ]) >= self.shifts[j].demand, f"demand_{self.shifts[j].shift_date}"self.model += plp.lpSum([self.X[(i, j)] for i in self.I if (i, j) in self.valid_keys ]) >= self.shifts[j].demand, f"demand_{self.shifts[j].shift_date}"
+        
         # for each weekend, a nurse works at most one day
         for i in self.I:
             for j1 in self.J:
@@ -111,8 +117,10 @@ class MultiObjectiveSolver:
             self.model += (1 - self.X[i, j]) <= self.W[
                 i, self.shifts[j].shift_date], f"day_is_off_{self.nurses[i].nurse_id}_{self.shifts[j].shift_date}"
 
-        days = list([datetime.strptime(self.shifts[j].shift_date, '%Y-%m-%d').weekday() for j in self.J if
+        days = list([datetime.strptime(self.shifts[j].shift_date, '%Y-%m-%d') for j in self.J if
                      datetime.strptime(self.shifts[j].shift_date, '%Y-%m-%d').weekday() in [5, 6]])
+
+
         total_weekend_days = len(days)
         for i in self.I:
             self.model += self.DOff[i] == plp.lpSum([self.W[i, self.shifts[j].shift_date] for j in self.J if (
@@ -131,11 +139,12 @@ class MultiObjectiveSolver:
                                                  j2].type_of_shift == 'M']) <= 1, f"morning_afternoon_{self.nurses[i].nurse_id}_{self.shifts[j1].shift_date}"
 
     def _epsilon_constraints_solver(self):
-        self.model.objective = self._create_objective_minimize_overtime()
+        self.model.setObjective( self._create_objective_minimize_overtime())
         self.model.solve()
         # get objective value
-        best_bound = plp.value(self.model.objective)
+        best_bound = self.model.objective.value()
 
-        self.model.objective = self._create_objective_minimize_penalty()
+        self.model.setObjective(self._create_objective_minimize_penalty())
+        
         self.model+= self._create_objective_minimize_overtime() <= best_bound
 
