@@ -7,19 +7,41 @@ from typing import List, Dict, Any, Optional
 @dataclass_json
 @dataclass
 class Nurse:
-    nurse_id: str  # Unique identifier for the nurse
-    weekend_preference: str  # (M) Morning or (A) afternoon
-    accumulated_hours: int  # Number of accumlated hours from last month
-    unavailability_days: List[str] = field(default_factory=list)  # List of days off
-    days_off_requested: List[str] = field(default_factory=list)  # List of days off requested by the nurse (former DLI)
-    available_morning_shifts: List[str] = field(default_factory=list)  # List of days available for morning shifts
-    available_afternoon_shifts: List[str] = field(default_factory=list)  # List of days available for afternoon shifts
+    nurse_id: int # Unique identifier for the nurse
+    nurse_name: str  # Name of the nurse
 
+    shift_preference: str  # (M) Morning or (A) afternoon
+    accumulated_hours: float  # Number of accumlated hours from last month
+    
+    morning_availability_labor_day: bool
+    morning_availability_weekend: bool
+    afternoon_availability_labor_day: bool
+    afternoon_availability_weekend: bool
+
+    dates_off: List[int] = field(default_factory=list)  # List of dates off for the nurse
+    vacations: List[int] = field(default_factory=list)  # List of vacations for the nurse
+
+"""'ID',
+ 'name',
+   'vacations',
+     'dates_off',
+       'TF',
+       'morning_availability_labor_day',
+         'morning_availability_weekend',
+       'afternoon_availability_labor_day',
+         'afternoon_availability_weekend',
+       'DLI'"""
 
 @dataclass_json
 @dataclass
 class Shift:
     shift_id:str  # Unique identifier for the shift
     shift_date: str# Date of the shift
-    type_of_shift: str  # (M) Morning or (A) afternoon
+    shift: str  # (M, COM, DISP,  T1, T2, CHX)
+    shift_type: str  # (M) Morning or (A) afternoon
+    weekday: int 
+    week_of_year: int
     demand: int = 0  # Number of nurses needed for the shift
+    holiday: bool = False  # True if the shift is a holiday
+    
+
