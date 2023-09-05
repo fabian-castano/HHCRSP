@@ -9,6 +9,10 @@ import pulp as plp
 from itertools import product
 from app.libs.classes import Shift, Nurse
 import json
+import pandas as pd
+import numpy as np
+import sys
+
 
 DM = 8
 # Esto hay que parametrizarlo con base en el mes
@@ -144,14 +148,46 @@ def check_feasibility(input_path:str):
                                                             and shifts[j2].shift_type == 'afternoon']) <= 1, f"morning_afternoon_{nurses[i].nurse_id}_{j}"
 
 
-    # solve the problem using HIGHS
-    solver = plp.GUROBI_CMD(msg=1)
-    model+=0
-    model.solve(solver)
-    return plp.LpStatus[model.status]
     
+    model+= expr_PDL+expr_PWE<=np.inf, "value_obj_1"
+    model+= Obj_2<=np.inf , "value_obj_2"
+    #
+    model.setObjective(expr_PDL+expr_PWE)
+    # solve the problem using HIGHS
+    solver = plp.GUROBI_CMD(msg=0)
+    model.solve(solver)
 
+    if plp.LpStatus[model.status] != "Optimal":
+        return False
 
+    best_1=expr_PDL.value()+expr_PWE.value()
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(best_1 )
+    model.setObjective(Obj_2)
+    model.solve(solver)
+    worst_2=Obj_2.value()
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(np.inf)
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(np.inf) 
+    model.setObjective(Obj_2)
+    model.solve(solver)
+    best_2=Obj_2.value()
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(best_2 )
+
+    model.setObjective(expr_PDL+expr_PWE)
+    model.solve(solver)
+    worst_1=expr_PDL.value()+expr_PWE.value()
+    print(best_1,best_2,worst_1,worst_2)
+
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(best_1)
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(np.inf)
+    model.setObjective(Obj_2)
+    return best_1!=worst_1 and best_2!=worst_2
+    
 
 
 
@@ -159,7 +195,7 @@ def check_feasibility(input_path:str):
 # %%
 
 
-def construct_model(input_path:str):
+def construct_model(input_path:str=None):
     with open(input_path+'shifts.json', 'r') as f:
         shifts = json.load(f)
 
@@ -313,7 +349,7 @@ def construct_model(input_path:str):
     model+= expr_PDL+expr_PWE<=objective + epsilon , "value_obj_1"
     model.setObjective(Obj_2)
     model.solve()
-    print(model.objective.value(),objective)
+    print(expr_PDL.value()+expr_PWE.value(),Obj_2.value())
     while model.status == 1:
         model.solve()
         print(expr_PDL.value()+expr_PWE.value(),Obj_2.value())
@@ -334,18 +370,10 @@ def construct_model(input_path:str):
     model.solve(solver)
 
 
-    import pandas as pd
-    import numpy as np
-    for i in I:
-        for j in J:
-            if (i, j) in valid_keys and X[i, j].varValue > 0.5:
-                if datetime.strptime(shifts[j].shift_date, '%Y-%m-%d').day in [1,7,8,14,15,21,22,28,29] and shifts[j].shift_type!=nurses[i].shift_preference:
-                    print(f"Nurse {nurses[i].nurse_name} works in shift {shifts[j].shift_id} on {shifts[j].shift_date} ({shifts[j].shift_type}--{shifts[j].shift}--{nurses[i].shift_preference}) with vacation {nurses[i].vacations} and days off {nurses[i].dates_off}.")
-                if datetime.strptime(shifts[j].shift_date, '%Y-%m-%d').day in nurses[i].dates_off:
-                    print(f"Nurse {nurses[i].nurse_name} works in shift {shifts[j].shift_id} on {shifts[j].shift_date} ({shifts[j].shift_type}--{shifts[j].shift}--{nurses[i].shift_preference}) with vacation {nurses[i].vacations} and days off {nurses[i].dates_off}.")
-
     date_range=np.sort(list(set([shifts[j].shift_date for j in range(len(shifts))])))
     nurses_shifts = {nurses[i].nurse_name: {shifts[j].shift_date:shifts[j].shift+" - "+shifts[j].shift_type for j in J if (i,j) in valid_keys and X[i, j].varValue > 0.5} for i in I}          
+    nurses_morning_shifts={nurses[i].nurse_name: {shifts[j].shift_date:shifts[j].shift for j in J if (i,j) in valid_keys and X[i, j].varValue > 0.5 and shifts[j].shift_type=="morning"} for i in I}
+    nurses_afternoo_shifts={nurses[i].nurse_name: {shifts[j].shift_date:shifts[j].shift for j in J if (i,j) in valid_keys and X[i, j].varValue > 0.5 and shifts[j].shift_type=="afternoon"} for i in I}
 
     tabulated_shifts=[]
     for nurse in nurses_shifts:
@@ -353,10 +381,17 @@ def construct_model(input_path:str):
         for date in date_range:
             if date not in nurses_shifts[nurse]:
                 line.append("-")
+                line.append("-")
+            elif date in nurses_morning_shifts[nurse]:
+                line.append(nurses_morning_shifts[nurse][date])
+                line.append("-")
             else:
-                line.append(nurses_shifts[nurse][date])
+                line.append("-")
+                line.append(nurses_afternoo_shifts[nurse][date])
         tabulated_shifts.append(line)
-    tabulated_shifts=pd.DataFrame(tabulated_shifts, columns=["Nurse"]+[date for date in date_range])
+    tabulated_shifts=pd.DataFrame(tabulated_shifts, columns=["Nurse"]+[str(date)+str(jornada) for date,jornada in product(date_range,["-mañana","-tarde"])])
+    tabulated_shifts.to_excel("tabulated_shifts.xlsx")
+    tabulated_shifts
 
 
 
@@ -364,3 +399,5 @@ def construct_model(input_path:str):
 
 
 # %%
+#filepath is the same as the curren directory
+construct_model("app/libs/")
