@@ -195,18 +195,20 @@ def check_feasibility(input_path:str):
 # %%
 
 
-def construct_model(input_path:str=None):
-    with open(input_path+'shifts.json', 'r') as f:
+def construct_model(input_path:str=None,instance=None):
+    with open(input_path+'shifts_'+str(instance)+'.json', 'r') as f:
         shifts = json.load(f)
 
-    with open(input_path+'nurses.json', 'r') as f:
+    with open(input_path+'nurses_'+str(instance)+'.json', 'r') as f:
         nurses = json.load(f)
 
     shifts = {shift['shift_id']: Shift(**shift) for shift in shifts}
     nurses = {nurse['nurse_id']: Nurse(**nurse) for nurse in nurses}
     
-    # Additional parameters 
+    print(f" The instance {instance} has {len(nurses)} nurses and {len(shifts)} shifts")
 
+    # Additional parameters 
+    """
     model = plp.LpProblem("Nurse_Scheduling", plp.LpMinimize)
     I = set(nurses.keys())
     J = set(shifts.keys())
@@ -362,6 +364,9 @@ def construct_model(input_path:str=None):
     model.setObjective(expr_PDL+expr_PWE)
     model.solve(solver)
     worst_1=expr_PDL.value()+expr_PWE.value()
+
+    
+
     print(best_1,best_2,worst_1,worst_2)
 
     ctr = model.constraints["value_obj_1"]
@@ -372,10 +377,11 @@ def construct_model(input_path:str=None):
 
     epsilon = 1
     model.solve()
-
+    lines=[]
     while model.status == 1:
         model.solve()
         print(expr_PDL.value()+expr_PWE.value(),Obj_2.value())
+        lines.append([expr_PDL.value()+expr_PWE.value(),Obj_2.value()])
         epsilon += 1
         ctr = model.constraints["value_obj_1"]
         ctr.changeRHS(best_1 + epsilon)
@@ -415,7 +421,9 @@ def construct_model(input_path:str=None):
         tabulated_shifts.append(line)
     tabulated_shifts=pd.DataFrame(tabulated_shifts, columns=["Nurse"]+[str(date)+str(jornada) for date,jornada in product(date_range,["-mañana","-tarde"])])
     tabulated_shifts.to_excel("tabulated_shifts.xlsx")
-    return True
+
+    df=pd.DataFrame(lines,columns=["PDL","MDH"])
+    return df"""
 
 
 
