@@ -207,7 +207,7 @@ def construct_model(input_path:str=None):
     
     # Additional parameters 
 
-    model = plp.LpProblem("Nurse Scheduling", plp.LpMinimize)
+    model = plp.LpProblem("Nurse_Scheduling", plp.LpMinimize)
     I = set(nurses.keys())
     J = set(shifts.keys())
     K = set([datetime.strptime(shifts[j].shift_date, '%Y-%m-%d').day for j in J])
@@ -334,34 +334,58 @@ def construct_model(input_path:str=None):
 
 
     # solve the problem using HIGHS
+    solver = plp.GUROBI_CMD(msg=1)
+    model.solve(solver)
+    model+= expr_PDL+expr_PWE<=np.inf, "value_obj_1"
+    model+= Obj_2<=np.inf , "value_obj_2"
+    #
+    model.setObjective(expr_PDL+expr_PWE)
+    # solve the problem using HIGHS
     solver = plp.GUROBI_CMD(msg=0)
     model.solve(solver)
-    #Obj_2 = MDH + plp.lpSum([V[i] for i in I]) * (1 / DM)
-
-
-
-    print(model.objective.value())
-
-
-
-    objective = model.objective.value()
-    epsilon = 1
-    model+= expr_PDL+expr_PWE<=objective + epsilon , "value_obj_1"
+    best_1=expr_PDL.value()+expr_PWE.value()
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(best_1 )
     model.setObjective(Obj_2)
+    model.solve(solver)
+    worst_2=Obj_2.value()
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(np.inf)
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(np.inf) 
+    model.setObjective(Obj_2)
+    model.solve(solver)
+    best_2=Obj_2.value()
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(best_2 )
+
+    model.setObjective(expr_PDL+expr_PWE)
+    model.solve(solver)
+    worst_1=expr_PDL.value()+expr_PWE.value()
+    print(best_1,best_2,worst_1,worst_2)
+
+    ctr = model.constraints["value_obj_1"]
+    ctr.changeRHS(best_1)
+    ctr = model.constraints["value_obj_2"]
+    ctr.changeRHS(np.inf)
+    model.setObjective(Obj_2)
+
+    epsilon = 1
     model.solve()
-    print(expr_PDL.value()+expr_PWE.value(),Obj_2.value())
+
     while model.status == 1:
         model.solve()
         print(expr_PDL.value()+expr_PWE.value(),Obj_2.value())
         epsilon += 1
         ctr = model.constraints["value_obj_1"]
-        ctr.changeRHS(objective + epsilon)
+        ctr.changeRHS(best_1 + epsilon)
 
 
-        if objective + epsilon ==7:
+        if best_1 + epsilon > worst_1:
             break
         
     model.setObjective(Obj_2)
+
 
 
     #Get gurobi model status code
@@ -391,7 +415,7 @@ def construct_model(input_path:str=None):
         tabulated_shifts.append(line)
     tabulated_shifts=pd.DataFrame(tabulated_shifts, columns=["Nurse"]+[str(date)+str(jornada) for date,jornada in product(date_range,["-mañana","-tarde"])])
     tabulated_shifts.to_excel("tabulated_shifts.xlsx")
-    tabulated_shifts
+    return True
 
 
 
@@ -400,4 +424,4 @@ def construct_model(input_path:str=None):
 
 # %%
 #filepath is the same as the curren directory
-construct_model("app/libs/")
+#construct_model("app/libs/")
