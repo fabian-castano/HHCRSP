@@ -15,8 +15,7 @@ from app.libs.constants import shift_type,HMM,DM
 
 if __name__=="__main__":
 
-    #df=construct_model('/Users/user/Documents/HHCRSP/proyecto_HHCRSP/instances/',sys.argv[1])
-    #df["instance"]=sys.argv[1]
+    df=construct_model('/Users/user/Documents/HHCRSP/proyecto_HHCRSP/instances/',sys.argv[1])
     #df.to_pickle(f"results/results_{sys.argv[1]}.pkl")
     working_dir='/Users/user/Documents/HHCRSP/proyecto_HHCRSP/results/'
     dfs=[]
