@@ -12,6 +12,9 @@ import json
 import pandas as pd
 import numpy as np
 import sys
+from pulp import HiGHS_CMD
+path_to_highs='/Users/fabiancastano/Documents/HiGHS/build/bin/highs'
+solver = HiGHS_CMD(path=path_to_highs,msg=0)
 
 
 DM = 8
@@ -154,7 +157,6 @@ def check_feasibility(input_path:str):
     #
     model.setObjective(expr_PDL+expr_PWE)
     # solve the problem using HIGHS
-    solver = plp.GUROBI_CMD(msg=0)
     model.solve(solver)
 
     if plp.LpStatus[model.status] != "Optimal":
@@ -208,7 +210,7 @@ def construct_model(input_path:str=None,instance=None):
     print(f" The instance {instance} has {len(nurses)} nurses and {len(shifts)} shifts")
 
     # Additional parameters 
-    """
+    
     model = plp.LpProblem("Nurse_Scheduling", plp.LpMinimize)
     I = set(nurses.keys())
     J = set(shifts.keys())
@@ -336,14 +338,12 @@ def construct_model(input_path:str=None,instance=None):
 
 
     # solve the problem using HIGHS
-    solver = plp.GUROBI_CMD(msg=1)
     model.solve(solver)
     model+= expr_PDL+expr_PWE<=np.inf, "value_obj_1"
     model+= Obj_2<=np.inf , "value_obj_2"
     #
     model.setObjective(expr_PDL+expr_PWE)
     # solve the problem using HIGHS
-    solver = plp.GUROBI_CMD(msg=0)
     model.solve(solver)
     best_1=expr_PDL.value()+expr_PWE.value()
     ctr = model.constraints["value_obj_1"]
@@ -396,7 +396,7 @@ def construct_model(input_path:str=None,instance=None):
 
     #Get gurobi model status code
     #set gurobi verbose to 1
-    solver = plp.GUROBI_CMD(msg=1)
+    
     model.solve(solver)
 
 
@@ -423,7 +423,7 @@ def construct_model(input_path:str=None,instance=None):
     tabulated_shifts.to_excel("tabulated_shifts.xlsx")
 
     df=pd.DataFrame(lines,columns=["PDL","MDH"])
-    return df"""
+    return df
 
 
 

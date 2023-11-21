@@ -15,11 +15,15 @@ from app.libs.constants import shift_type,HMM,DM
 
 if __name__=="__main__":
 
-    df=construct_model('/Users/user/Documents/HHCRSP/proyecto_HHCRSP/instances/',sys.argv[1])
-    #df.to_pickle(f"results/results_{sys.argv[1]}.pkl")
-    working_dir='/Users/user/Documents/HHCRSP/proyecto_HHCRSP/results/'
+    
+    """df=construct_model('instances/',sys.argv[1])
+    if not os.path.exists('results/'):
+        os.makedirs('results/')
+    df.to_pickle(f"results/results_{sys.argv[1]}.pkl")"""
+
+    working_dir='results/'
     dfs=[]
-    for i in range(2,172):
+    for i in range(3,172):
         df=pd.read_pickle(f"{working_dir}results_{i}.pkl")
         df["instance"]=i
         dfs.append(df)
