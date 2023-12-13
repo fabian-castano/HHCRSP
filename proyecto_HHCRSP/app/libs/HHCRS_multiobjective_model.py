@@ -197,12 +197,12 @@ def check_feasibility(input_path:str):
 # %%
 
 
-def construct_model(input_path:str=None,instance=None):
-    with open(input_path+'shifts_'+str(instance)+'.json', 'r') as f:
-        shifts = json.load(f)
+def construct_model(input_path:str=None,instance_number=None):
+    with open(input_path+'instance_'+str(instance_number)+'.json', 'r') as f:
+        instance = json.load(f)
 
-    with open(input_path+'nurses_'+str(instance)+'.json', 'r') as f:
-        nurses = json.load(f)
+    shifts = instance['shifts']
+    nurses = instance['nurses']
 
     shifts = {shift['shift_id']: Shift(**shift) for shift in shifts}
     nurses = {nurse['nurse_id']: Nurse(**nurse) for nurse in nurses}
@@ -420,7 +420,7 @@ def construct_model(input_path:str=None,instance=None):
                 line.append(nurses_afternoo_shifts[nurse][date])
         tabulated_shifts.append(line)
     tabulated_shifts=pd.DataFrame(tabulated_shifts, columns=["Nurse"]+[str(date)+str(jornada) for date,jornada in product(date_range,["-mañana","-tarde"])])
-    tabulated_shifts.to_excel("tabulated_shifts.xlsx")
+    #tabulated_shifts.to_excel("tabulated_shifts.xlsx")
 
     df=pd.DataFrame(lines,columns=["PDL","MDH"])
     return df
@@ -431,5 +431,5 @@ def construct_model(input_path:str=None,instance=None):
 
 
 # %%
-#filepath is the same as the curren directory
+#filepath is the same as the current directory
 #construct_model("app/libs/")
